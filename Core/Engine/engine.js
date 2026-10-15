@@ -400,7 +400,7 @@ function clearChoiceAtmosphere() {
 }
 
 // ═══════ BOOT ═══════
-window.addEventListener('DOMContentLoaded', () => {
+function bootGame() {
   initParticles();
   initSceneInteractivity();
   loadSettings();
@@ -413,11 +413,28 @@ window.addEventListener('DOMContentLoaded', () => {
   renderSaveSlots();
   initInteractiveSurfaces();
   initShowcaseTicker();
-  setTimeout(() => {
+
+  let splashDismissed = false;
+  const finishSplash = () => {
+    if (splashDismissed) return;
+    splashDismissed = true;
     switchScreen('title-screen');
     buildLibrary();
-  }, 3200);
-});
+  };
+
+  const splash = $('splash-screen');
+  if (splash) {
+    splash.addEventListener('click', finishSplash, { once: true });
+    splash.addEventListener('pointerdown', finishSplash, { once: true });
+  }
+  setTimeout(finishSplash, 1200);
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', bootGame);
+} else {
+  bootGame();
+}
 
 // ═══════ PROGRESS PERSISTENCE ═══════
 function loadProgress() {

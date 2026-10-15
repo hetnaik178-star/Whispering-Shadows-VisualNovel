@@ -2,17 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=UI/Views/index.html">
     <title>Whispering Shadows — Interactive Cinematic Stories</title>
     <script>
-        window.location.replace("UI/Views/index.html");
+        (function() {
+            var basePath = window.location.pathname.replace(/\/+$/, '');
+            var target = basePath + '/UI/Views/index.html';
+            window.location.replace(target);
+        })();
     </script>
 </head>
 <body style="background: #050508; color: #e0d0b0; font-family: 'Cinzel', serif, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center;">
     <div>
         <h1 style="letter-spacing: 4px; font-weight: 300;">WHISPERING SHADOWS</h1>
-        <p style="opacity: 0.7; font-size: 14px;">Loading game realm...</p>
-        <p style="font-size: 12px; opacity: 0.4;">If you are not redirected automatically, <a href="UI/Views/index.html" style="color: #e0d0b0;">click here</a>.</p>
+        <p style="opacity: 0.7; font-size: 14px;">Entering game realm...</p>
+        <p style="font-size: 13px; opacity: 0.5; margin-top: 20px;">
+            <a id="direct-link" href="UI/Views/index.html" style="color: #c4a7e7; text-decoration: underline;">Click here if not redirected automatically</a>
+        </p>
     </div>
+    <script>
+        var basePath = window.location.pathname.replace(/\/+$/, '');
+        document.getElementById('direct-link').href = basePath + '/UI/Views/index.html';
+    </script>
 </body>
 </html>
