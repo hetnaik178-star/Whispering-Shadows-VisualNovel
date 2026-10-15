@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whispering Shadows — Interactive Cinematic Stories</title>
+    <meta name="description" content="An immersive visual novel where your choices shape the narrative. Multiple stories, multiple endings, one unforgettable journey.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../Styles/style.css">
+</head>
+<body>
+    <div class="ws-titlebar">
+        <div class="ws-titlebar-drag"></div>
+        <div class="ws-titlebar-controls">
+            <button class="ws-titlebar-btn" onclick="if(window.electronAPI) window.electronAPI.minimize()" title="Minimize">—</button>
+            <button class="ws-titlebar-btn" onclick="if(window.electronAPI) window.electronAPI.maximize()" title="Maximize">□</button>
+            <button class="ws-titlebar-btn ws-titlebar-close" onclick="if(window.electronAPI) window.electronAPI.close()" title="Close">✕</button>
+        </div>
+    </div>
+    <canvas id="particles"></canvas>
+    <canvas id="sparkles"></canvas>
+    <div class="ambient-orbs">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="orb orb-4"></div>
+      <div class="orb orb-5"></div>
+    </div>
+
+    <!-- ═══════ AUDIO SYSTEM (dual players for crossfade) ═══════ -->
+    <audio id="music-a" loop preload="none"></audio>
+    <audio id="music-b" loop preload="none"></audio>
+
+    <!-- ═══════ TRANSITION VIDEO OVERLAY ═══════ -->
+    <div id="transition-overlay" class="transition-overlay hidden">
+        <video id="transition-video" muted playsinline></video>
+    </div>
+
+    <!-- ═══════ SPLASH / BOOT ═══════ -->
+    <div id="splash-screen" class="screen active">
+        <video class="splash-video-bg" autoplay muted loop playsinline>
+            <source src="../../Assets/TransitionEffects/MysteriousSpaceNavigation.mp4" type="video/mp4">
+        </video>
+        <div class="splash-overlay"></div>
+        <div class="splash-content">
+            <div class="splash-logo" aria-hidden="true">
+                <svg class="ws-logo-svg" viewBox="0 0 200 200" width="1em" height="1em" focusable="false" aria-hidden="true" style="filter: drop-shadow(0 0 18px rgba(168,85,247,0.55)) drop-shadow(0 0 40px rgba(244,63,94,0.25));">
+                    <!-- Deep void base -->
+                    <circle cx="100" cy="100" r="72" fill="#12022b" opacity="0.95"/>
+                    <circle cx="100" cy="100" r="58" fill="#4c1d95" opacity="0.45"/>
+                    <circle cx="100" cy="100" r="38" fill="#6d28d9" opacity="0.3"/>
+                    <!-- Outer orbit rings -->
+                    <circle cx="100" cy="100" r="91" fill="none" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="2 7" opacity="0.55"/>
+                    <!-- Fast spinning red ring -->
+                    <circle cx="100" cy="100" r="83" fill="none" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="12 4 2 4" opacity="0.9" class="ws-logo-ring-spin-fast"/>
+                    <!-- Slow counter-spinning lilac ring -->
+                    <circle cx="100" cy="100" r="75" fill="none" stroke="#c4b5fd" stroke-width="0.8" stroke-dasharray="28 7 5 7" opacity="0.75" class="ws-logo-ring-spin-slow"/>
+                    <!-- Teal accent inner ring -->
+                    <circle cx="100" cy="100" r="67" fill="none" stroke="#2dd4bf" stroke-width="0.6" stroke-dasharray="5 14" opacity="0.5" class="ws-logo-ring-spin-fast"/>
+                    <!-- Purple crescent body -->
+                    <path d="M100 18 C38 18, 18 78, 18 100 C18 122, 38 182, 100 182 C78 150, 68 125, 68 100 C68 75, 78 50, 100 18 Z" fill="#7c3aed" opacity="0.9"/>
+                    <!-- Violet right overlay -->
+                    <path d="M100 18 C162 18, 182 78, 182 100 C182 122, 162 182, 100 182 C122 150, 132 125, 132 100 C132 75, 122 50, 100 18 Z" fill="#a855f7" opacity="0.38"/>
+                    <!-- Red flame slash -->
+                    <path d="M100 32 C58 32, 42 74, 42 100 C42 126, 58 168, 100 168 C83 142, 78 122, 78 100 C78 78, 83 57, 100 32 Z" fill="#f43f5e" opacity="0.7"/>
+                    <!-- Diamond outer bright outline -->
+                    <polygon points="100,30 144,100 100,170 56,100" fill="none" stroke="#e0d4ff" stroke-width="2.5" opacity="0.95"/>
+                    <!-- Diamond inner dark fill with dash border -->
+                    <polygon points="100,44 132,100 100,156 68,100" fill="#1e0845" stroke="#f43f5e" stroke-width="1.8" stroke-dasharray="10 3" opacity="1"/>
+                    <!-- 4-point cardinal starburst (wisp lines) -->
+                    <line x1="100" y1="70" x2="100" y2="83" stroke="#f9a8d4" stroke-width="1.8" opacity="0.75" class="ws-logo-wisp-top"/>
+                    <line x1="100" y1="117" x2="100" y2="130" stroke="#f9a8d4" stroke-width="1.8" opacity="0.75" class="ws-logo-wisp-bot"/>
+                    <line x1="70" y1="100" x2="83" y2="100" stroke="#c4b5fd" stroke-width="1.2" opacity="0.65"/>
+                    <line x1="117" y1="100" x2="130" y2="100" stroke="#c4b5fd" stroke-width="1.2" opacity="0.65"/>
+                    <!-- Diagonal sparkle rays -->
+                    <line x1="79" y1="79" x2="88" y2="88" stroke="#f43f5e" stroke-width="1" opacity="0.55"/>
+                    <line x1="112" y1="112" x2="121" y2="121" stroke="#f43f5e" stroke-width="1" opacity="0.55"/>
+                    <line x1="112" y1="88" x2="121" y2="79" stroke="#a855f7" stroke-width="1" opacity="0.5"/>
+                    <line x1="79" y1="121" x2="88" y2="112" stroke="#a855f7" stroke-width="1" opacity="0.5"/>
+                    <!-- Wisp flow paths -->
+                    <path d="M100 -5 C 70 45, 140 55, 100 100" fill="none" stroke="#c4b5fd" stroke-width="1.8" opacity="0.6" class="ws-logo-wisp-top"/>
+                    <path d="M100 205 C 130 155, 60 145, 100 100" fill="none" stroke="#c4b5fd" stroke-width="1.8" opacity="0.6" class="ws-logo-wisp-bot"/>
+                    <!-- Core pulsing halo layers -->
+                    <circle cx="100" cy="100" r="22" fill="#f43f5e" opacity="0.08" class="ws-logo-core-pulse"/>
+                    <circle cx="100" cy="100" r="15" fill="#f43f5e" opacity="0.18"/>
+                    <!-- Core gem -->
+                    <circle cx="100" cy="100" r="9" fill="#f43f5e"/>
+                    <!-- Corona bright ring -->
+                    <circle cx="100" cy="100" r="9" fill="none" stroke="#fda4af" stroke-width="2" opacity="0.9" class="ws-logo-core-pulse"/>
+                    <!-- Bright center -->
+                    <circle cx="100" cy="100" r="4.5" fill="#fff1f2"/>
+                    <!-- Gleam offset highlight -->
+                    <circle cx="96.5" cy="96.5" r="1.8" fill="#ffffff" opacity="0.95"/>
+                    <!-- Particles -->
+                    <circle cx="58" cy="49" r="2.8" fill="#f43f5e" class="ws-logo-particle p1"/>
+                    <circle cx="142" cy="151" r="2.2" fill="#a855f7" class="ws-logo-particle p2"/>
+                    <circle cx="153" cy="58" r="3" fill="#6366f1" class="ws-logo-particle p3"/>
+                    <circle cx="47" cy="142" r="2.5" fill="#2dd4bf" class="ws-logo-particle p4"/>
+                    <circle cx="132" cy="42" r="1.8" fill="#f43f5e" class="ws-logo-particle p2"/>
+                    <circle cx="64" cy="160" r="1.5" fill="#c4b5fd" class="ws-logo-particle p3"/>
+                </svg>
+            </div>
+            <h1 class="splash-title">Whispering Shadows</h1>
+            <p class="splash-sub">Interactive Cinematic Stories</p>
+            <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+            <p class="splash-hint">Where every choice writes your fate</p>
+        </div>
+    </div>
+
+    <!-- ═══════ HOME / STORY LIBRARY ═══════ -->
+    <div id="title-screen" class="screen">
+        <!-- Floating Navigation Bar -->
+        <nav class="nav-float" id="nav-float">
+            <div class="nav-float-brand">
+                <span class="nav-brand-icon" aria-hidden="true">
+                    <svg class="ws-logo-svg ws-logo-nav" viewBox="0 0 200 200" width="28" height="28" focusable="false" aria-hidden="true">
+                        <circle cx="100" cy="100" r="72" fill="#12022b" opacity="0.95"/>
+                        <circle cx="100" cy="100" r="52" fill="#4c1d95" opacity="0.5"/>
+                        <circle cx="100" cy="100" r="91" fill="none" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="2 7" opacity="0.55"/>
+                        <circle cx="100" cy="100" r="83" fill="none" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="12 4 2 4" opacity="0.9" class="ws-logo-ring-spin-fast"/>
+                        <circle cx="100" cy="100" r="75" fill="none" stroke="#c4b5fd" stroke-width="0.8" stroke-dasharray="28 7 5 7" opacity="0.75" class="ws-logo-ring-spin-slow"/>
+                        <path d="M100 18 C38 18, 18 78, 18 100 C18 122, 38 182, 100 182 C78 150, 68 125, 68 100 C68 75, 78 50, 100 18 Z" fill="#7c3aed" opacity="0.9"/>
+                        <path d="M100 18 C162 18, 182 78, 182 100 C182 122, 162 182, 100 182 C122 150, 132 125, 132 100 C132 75, 122 50, 100 18 Z" fill="#a855f7" opacity="0.38"/>
+                        <path d="M100 32 C58 32, 42 74, 42 100 C42 126, 58 168, 100 168 C83 142, 78 122, 78 100 C78 78, 83 57, 100 32 Z" fill="#f43f5e" opacity="0.7"/>
+                        <polygon points="100,30 144,100 100,170 56,100" fill="none" stroke="#e0d4ff" stroke-width="2.5" opacity="0.95"/>
+                        <polygon points="100,44 132,100 100,156 68,100" fill="#1e0845" stroke="#f43f5e" stroke-width="1.8" stroke-dasharray="10 3"/>
+                        <circle cx="100" cy="100" r="15" fill="#f43f5e" opacity="0.18"/>
+                        <circle cx="100" cy="100" r="9" fill="#f43f5e"/>
+                        <circle cx="100" cy="100" r="4.5" fill="#fff1f2"/>
+                        <circle cx="96.5" cy="96.5" r="1.8" fill="#ffffff" opacity="0.95"/>
+                    </svg>
+                </span>
+                <span class="nav-brand-text">WS</span>
+            </div>
+            <div class="nav-float-links">
+                <button class="nav-link active" data-section="library" onclick="navScrollTo('library')">Library</button>
+                <button class="nav-link" data-section="identity" onclick="toggleIdentityCard()">Identity</button>
+                <button class="nav-link" data-section="atlas" onclick="toggleFateAtlas()">Fate Atlas</button>
+                <button class="nav-link" data-section="archive" onclick="toggleArchivePanel()">Archive</button>
+                <button class="nav-link" data-section="settings" onclick="toggleSettings()">Settings</button>
+            </div>
+            <div class="nav-float-indicators">
+                <span class="nav-indicator" id="nav-stories-count" title="Stories Available">7 Stories</span>
+                <span class="nav-indicator nav-indicator-accent" id="nav-endings-count" title="Endings Discovered">0 Endings</span>
+            </div>
+        </nav>
+        <div class="home-wrapper">
+            <header class="home-hero">
+                <div class="hero-brand">
+                    <span class="brand-icon" aria-hidden="true">
+                        <svg class="ws-logo-svg ws-logo-hero" viewBox="0 0 200 200" width="1.4em" height="1.4em" focusable="false" aria-hidden="true" style="filter: drop-shadow(0 0 14px rgba(168,85,247,0.6)) drop-shadow(0 0 28px rgba(244,63,94,0.3)); vertical-align: text-bottom;">
+                            <circle cx="100" cy="100" r="72" fill="#12022b" opacity="0.95"/>
+                            <circle cx="100" cy="100" r="58" fill="#4c1d95" opacity="0.45"/>
+                            <circle cx="100" cy="100" r="91" fill="none" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="2 7" opacity="0.55"/>
+                            <circle cx="100" cy="100" r="83" fill="none" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="12 4 2 4" opacity="0.9" class="ws-logo-ring-spin-fast"/>
+                            <circle cx="100" cy="100" r="75" fill="none" stroke="#c4b5fd" stroke-width="0.8" stroke-dasharray="28 7 5 7" opacity="0.75" class="ws-logo-ring-spin-slow"/>
+                            <circle cx="100" cy="100" r="67" fill="none" stroke="#2dd4bf" stroke-width="0.6" stroke-dasharray="5 14" opacity="0.5" class="ws-logo-ring-spin-fast"/>
+                            <path d="M100 18 C38 18, 18 78, 18 100 C18 122, 38 182, 100 182 C78 150, 68 125, 68 100 C68 75, 78 50, 100 18 Z" fill="#7c3aed" opacity="0.9"/>
+                            <path d="M100 18 C162 18, 182 78, 182 100 C182 122, 162 182, 100 182 C122 150, 132 125, 132 100 C132 75, 122 50, 100 18 Z" fill="#a855f7" opacity="0.38"/>
+                            <path d="M100 32 C58 32, 42 74, 42 100 C42 126, 58 168, 100 168 C83 142, 78 122, 78 100 C78 78, 83 57, 100 32 Z" fill="#f43f5e" opacity="0.7"/>
+                            <polygon points="100,30 144,100 100,170 56,100" fill="none" stroke="#e0d4ff" stroke-width="2.5" opacity="0.95"/>
+                            <polygon points="100,44 132,100 100,156 68,100" fill="#1e0845" stroke="#f43f5e" stroke-width="1.8" stroke-dasharray="10 3"/>
+                            <line x1="100" y1="70" x2="100" y2="83" stroke="#f9a8d4" stroke-width="1.8" opacity="0.75" class="ws-logo-wisp-top"/>
+                            <line x1="100" y1="117" x2="100" y2="130" stroke="#f9a8d4" stroke-width="1.8" opacity="0.75" class="ws-logo-wisp-bot"/>
+                            <path d="M100 -5 C 70 45, 140 55, 100 100" fill="none" stroke="#c4b5fd" stroke-width="1.8" opacity="0.6" class="ws-logo-wisp-top"/>
+                            <path d="M100 205 C 130 155, 60 145, 100 100" fill="none" stroke="#c4b5fd" stroke-width="1.8" opacity="0.6" class="ws-logo-wisp-bot"/>
+                            <circle cx="100" cy="100" r="22" fill="#f43f5e" opacity="0.08" class="ws-logo-core-pulse"/>
+                            <circle cx="100" cy="100" r="15" fill="#f43f5e" opacity="0.18"/>
+                            <circle cx="100" cy="100" r="9" fill="#f43f5e"/>
+                            <circle cx="100" cy="100" r="9" fill="none" stroke="#fda4af" stroke-width="2" opacity="0.9" class="ws-logo-core-pulse"/>
+                            <circle cx="100" cy="100" r="4.5" fill="#fff1f2"/>
+                            <circle cx="96.5" cy="96.5" r="1.8" fill="#ffffff" opacity="0.95"/>
+                            <circle cx="58" cy="49" r="2.8" fill="#f43f5e" class="ws-logo-particle p1"/>
+                            <circle cx="142" cy="151" r="2.2" fill="#a855f7" class="ws-logo-particle p2"/>
+                            <circle cx="153" cy="58" r="3" fill="#6366f1" class="ws-logo-particle p3"/>
+                            <circle cx="47" cy="142" r="2.5" fill="#2dd4bf" class="ws-logo-particle p4"/>
+                        </svg>
+                    </span>
+                    <span class="brand-name">Whispering Shadows</span>
+                </div>
+                <h1 class="hero-tagline">Your choices. Your story. Your ending.</h1>
+                <p class="hero-desc">A curated collection of cinematic narratives. Every decision reshapes the world around you. No two playthroughs are the same.</p>
+                <div class="hero-actions">
+                    <button class="btn-play hero-resume hidden" id="resume-run-btn" onclick="resumeSession()">
+                        <span class="play-icon">▶</span> Resume Last Run
+                    </button>
+                </div>
+                <!-- Feature Showcase Ticker -->
+                <div class="showcase-ticker" id="showcase-ticker">
+                    <div class="showcase-ticker-track" id="showcase-ticker-track">
+                        <span class="showcase-ticker-item">🎭 7 Cinematic Stories</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                        <span class="showcase-ticker-item">🔀 Branching Narratives with Multiple Endings</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                        <span class="showcase-ticker-item">🎧 Procedural Ambient Soundscapes</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                        <span class="showcase-ticker-item">🖼️ 140+ Cinematic Scene Artworks</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                        <span class="showcase-ticker-item">🧬 Fate Atlas — AI-style Player Profiling</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                        <span class="showcase-ticker-item">⏱️ Timed Choices Under Pressure</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                        <span class="showcase-ticker-item">💾 Memory Archive Save System</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                        <span class="showcase-ticker-item">🎬 Video Transitions & Scene Parallax</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                        <span class="showcase-ticker-item">📖 Live Story Journal & Cast Tracker</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                        <span class="showcase-ticker-item">🌌 6 Genre-Themed UI Systems</span>
+                        <span class="showcase-ticker-sep">✦</span>
+                    </div>
+                </div>
+            </header>
+            <section class="story-library">
+                <div class="library-topbar">
+                    <h2 class="lib-heading">Choose Your Story</h2>
+                    <div class="library-controls">
+                        <label class="search-shell">
+                            <span class="search-shell-icon">⌕</span>
+                            <input id="story-search" class="library-search" type="search" placeholder="Search titles, genres, and moods..." oninput="setLibrarySearch(this.value)">
+                            <button class="search-clear hidden" id="story-search-clear" type="button" onclick="clearLibrarySearch()" aria-label="Clear search">×</button>
+                        </label>
+                        <div class="filter-cluster">
+                            <div class="filter-menu" id="genre-menu">
+                                <button class="filter-trigger" type="button" onclick="toggleFilterMenu('genre')">
+                                    <span class="filter-trigger-kicker">Filter</span>
+                                    <span class="filter-trigger-value" id="story-filter-label">All Genres</span>
+                                </button>
+                                <div class="filter-options hidden" id="story-filter-options"></div>
+                            </div>
+                            <div class="filter-menu" id="sort-menu">
+                                <button class="filter-trigger" type="button" onclick="toggleFilterMenu('sort')">
+                                    <span class="filter-trigger-kicker">Sort</span>
+                                    <span class="filter-trigger-value" id="story-sort-label">Featured</span>
+                                </button>
+                                <div class="filter-options hidden" id="story-sort-options"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="library-status" id="library-status">
+                    <div class="library-status-count" id="library-status-count">Stories in focus</div>
+                    <div class="library-status-copy" id="library-status-copy">Every thread waits for a different version of you.</div>
+                </div>
+
+                <section class="story-preview-panel hidden" id="story-preview-panel">
+                    <div class="story-preview-media" id="story-preview-media"></div>
+                    <div class="story-preview-copy">
+                        <span class="story-preview-kicker" id="story-preview-kicker">Thread Preview</span>
+                        <h3 class="story-preview-title" id="story-preview-title">Hover a story to preview its cinematic pull.</h3>
+                        <p class="story-preview-desc" id="story-preview-desc">The shelf will surface a stronger read on each world as you move across the cards.</p>
+                        <div class="story-preview-meta">
+                            <span class="story-preview-pill" id="story-preview-genre">Genre</span>
+                            <span class="story-preview-pill" id="story-preview-duration">~ Runtime</span>
+                            <span class="story-preview-pill" id="story-preview-episodes">0 episodes</span>
+                            <span class="story-preview-pill" id="story-preview-endings">0 endings</span>
+                        </div>
+                    </div>
+                    <button class="btn-outline story-preview-btn" id="story-preview-btn" type="button">Open Thread</button>
+                </section>
+                <div class="story-grid" id="story-grid"><!-- JS populated --></div>
+                <p class="library-empty hidden" id="library-empty">No stories match that filter yet.</p>
+                <section class="library-spotlight hidden" id="library-spotlight">
+                    <div class="library-spotlight-copy">
+                        <span class="library-spotlight-kicker" id="library-spotlight-kicker">Next Signal</span>
+                        <h3 class="library-spotlight-title" id="library-spotlight-title">A thread worth opening is waiting.</h3>
+                        <p class="library-spotlight-desc" id="library-spotlight-desc">The shelf will surface a stronger recommendation as your choices begin to leave a pattern.</p>
+                        <div class="library-spotlight-meta">
+                            <span class="library-spotlight-pill" id="library-spotlight-genre">Story</span>
+                            <span class="library-spotlight-pill" id="library-spotlight-progress">0% explored</span>
+                            <span class="library-spotlight-pill" id="library-spotlight-endings">0 endings</span>
+                        </div>
+                    </div>
+                    <button class="btn-outline library-spotlight-btn" id="library-spotlight-btn" type="button">Open Thread</button>
+                </section>
+                <div class="library-summary">
+                    <div class="hero-intel" id="hero-intel">
+                        <div class="intel-card">
+                            <span class="intel-label">Stories</span>
+                            <strong class="intel-value" id="intel-stories">0</strong>
+                        </div>
+                        <div class="intel-card">
+                            <span class="intel-label">Episodes Cleared</span>
+                            <strong class="intel-value" id="intel-episodes">0</strong>
+                        </div>
+                        <div class="intel-card">
+                            <span class="intel-label">Endings Found</span>
+                            <strong class="intel-value" id="intel-endings">0</strong>
+                        </div>
+                    </div>
+                    <div class="hero-utilities">
+                        <button class="memory-widget" id="archive-widget" onclick="toggleArchivePanel()">
+                            <span class="memory-widget-core"></span>
+                            <span class="memory-widget-copy">
+                                <span class="memory-widget-label">Memory Archive</span>
+                                <span class="memory-widget-meta" id="archive-widget-meta">No saved moments yet</span>
+                            </span>
+                        </button>
+                        <button class="memory-widget fate-widget" id="fate-widget" onclick="toggleFateAtlas()">
+                            <span class="memory-widget-core fate-widget-core"></span>
+                            <span class="memory-widget-copy">
+                                <span class="memory-widget-label">Fate Atlas</span>
+                                <span class="memory-widget-meta" id="atlas-widget-meta">No destinies mapped yet</span>
+                            </span>
+                        </button>
+                        <button class="memory-widget identity-widget" id="identity-widget" onclick="toggleIdentityCard()">
+                            <span class="memory-widget-core identity-widget-core"></span>
+                            <span class="memory-widget-copy">
+                                <span class="memory-widget-label">Player Identity</span>
+                                <span class="memory-widget-meta" id="identity-widget-meta">Your narrative fingerprint</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+            <footer class="home-footer">
+                <div class="footer-main">
+                    <span>Whispering Shadows</span><span class="dot">•</span>
+                    <span>Interactive Cinematic Stories</span><span class="dot">•</span>
+                    <span class="footer-tech">Pure HTML/CSS/JS — Zero Frameworks</span>
+                </div>
+                <div class="footer-built">
+                    <span class="footer-built-label">Built with intention for</span>
+                    <span class="footer-built-event">Hackathon 2026</span>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- ═══════ STORY INTRO / DETAILS ═══════ -->
+    <div id="story-intro" class="screen">
+        <div class="intro-bg" id="intro-bg"></div>
+        <div class="intro-overlay"></div>
+        <div class="intro-content">
+            <div class="intro-topbar">
+                <button class="btn-back" onclick="goHome()" id="btn-back-home">← Stories</button>
+                <button class="btn-close" onclick="goHome()" id="btn-close-intro" title="Close" aria-label="Close">×</button>
+            </div>
+            <span class="intro-genre" id="intro-genre"></span>
+            <h1 class="intro-title" id="intro-title"></h1>
+            <p class="intro-synopsis" id="intro-synopsis"></p>
+            <div class="intro-meta">
+                <span class="meta-tag" id="intro-duration"></span>
+                <span class="meta-tag" id="intro-endings"></span>
+                <span class="meta-tag" id="intro-choices"></span>
+            </div>
+            <div class="intro-actions">
+                <button class="btn-play" onclick="beginStory()" id="btn-begin-story">
+                    <span class="play-icon">▶</span> Begin Story
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ EPISODE SELECTION ═══════ -->
+    <div id="episode-select" class="screen">
+        <div class="ep-select-bg" id="ep-select-bg"></div>
+        <div class="ep-select-overlay"></div>
+        <div class="ep-select-wrapper">
+            <header class="ep-select-header">
+                <button class="btn-back" onclick="goHome()" id="btn-back-episodes">← Stories</button>
+                <button class="btn-close" onclick="goHome()" id="btn-close-episodes" title="Close" aria-label="Close">✕</button>
+                <div class="ep-select-story-info">
+                    <span class="ep-select-genre" id="ep-select-genre"></span>
+                    <h1 class="ep-select-title" id="ep-select-title"></h1>
+                    <p class="ep-select-synopsis" id="ep-select-synopsis"></p>
+                </div>
+            </header>
+            <section class="ep-list-section">
+                <h2 class="ep-list-heading">Episodes</h2>
+                <div class="ep-list" id="ep-list"><!-- JS populated --></div>
+                <div class="ending-tracker" id="ending-tracker">
+                    <div class="ending-tracker-head">
+                        <h3 class="ending-tracker-title">Ending Tracker</h3>
+                        <span class="ending-tracker-progress" id="ending-progress">0 / 0 unlocked</span>
+                    </div>
+                    <div class="ending-chip-list" id="ending-chip-list"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- ═══════ GAME SCREEN ═══════ -->
+    <div id="game-screen" class="screen">
+        <!-- Backgrounds -->
+        <div id="scene-bg" class="scene-bg"></div>
+        <video id="scene-video" class="scene-video-bg" muted loop playsinline></video>
+        <div class="scene-vignette"></div>
+        <!-- Cinematic letterbox -->
+        <div class="cinema-bar top"></div>
+        <div class="cinema-bar bottom"></div>
+
+        <!-- HUD -->
+        <div class="game-hud" id="game-hud">
+            <div class="hud-left">
+                <button class="hud-btn" onclick="previousLine()" title="Previous Dialogue" id="btn-previous">⟲</button>
+                <span class="hud-chapter" id="hud-chapter"></span>
+            </div>
+            <div class="hud-right">
+                <button class="hud-btn" onclick="toggleArchivePanel()" title="Memory Archive" id="btn-archive">💾</button>
+                <button class="hud-btn" onclick="toggleJournal()" title="Story Journal" id="btn-journal">📖</button>
+                <button class="hud-btn" onclick="toggleSettings()" title="Settings" id="btn-settings">⚙</button>
+                <button class="hud-btn" onclick="confirmExit()" title="Exit Story" id="btn-exit">✕</button>
+            </div>
+        </div>
+
+        <!-- Stats Panel -->
+        <div id="stats-panel" class="stats-panel hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: .8rem;">
+                <h3 style="margin-bottom: 0;">Your Journey</h3>
+                <button class="btn-close" onclick="toggleStats()" aria-label="Close stats" style="width: 28px; height: 28px;">&times;</button>
+            </div>
+            <div id="stats-content"></div>
+            <div class="stats-choices-count">Choices Made <span id="stats-choices-total">0</span></div>
+            <div class="choice-log" id="choice-log"></div>
+        </div>
+
+        <div id="journal-panel" class="journal-panel hidden">
+            <div class="journal-head">
+                <div>
+                    <div class="journal-kicker">Intel Archive</div>
+                    <h3 class="journal-title">Story Journal</h3>
+                </div>
+                <div class="journal-head-actions">
+                    <div class="journal-meta" id="journal-meta">No signal yet</div>
+                    <button class="btn-close journal-close" onclick="toggleJournal()" title="Close journal" aria-label="Close journal">&times;</button>
+                </div>
+            </div>
+            <div class="journal-grid">
+                <section class="journal-section">
+                    <h4 class="journal-section-title">Cast</h4>
+                    <div class="journal-cast-list" id="journal-cast-list"></div>
+                </section>
+                <section class="journal-section">
+                    <h4 class="journal-section-title">Milestones</h4>
+                    <div class="journal-milestone-list" id="journal-milestone-list"></div>
+                </section>
+            </div>
+            <section class="journal-section">
+                <h4 class="journal-section-title">Decision Feed</h4>
+                <div class="journal-choice-feed" id="journal-choice-feed"></div>
+            </section>
+        </div>
+
+        <!-- Critical Choice Warning -->
+        <div id="critical-banner" class="critical-banner hidden">
+            <div class="critical-pulse"></div>
+            <span class="critical-icon">⚠</span>
+            <span class="critical-text">Critical Choice — This will significantly alter your path</span>
+        </div>
+
+        <!-- Dialogue -->
+        <div id="dialogue-area" class="dialogue-area">
+            <img id="speaker-portrait" class="speaker-portrait" src="" alt="" style="display:none;">
+            <div class="dialogue-inner">
+                <div id="speaker-name" class="speaker-name"></div>
+                <div id="dialogue-text" class="dialogue-text"></div>
+            </div>
+            <div id="click-hint" class="click-hint">Continue →</div>
+        </div>
+
+        <!-- Choice Panel -->
+        <div id="choice-panel" class="choice-panel hidden">
+            <div id="choice-timer" class="choice-timer hidden">
+                <div id="choice-timer-fill" class="choice-timer-fill"></div>
+                <span id="choice-timer-text" class="choice-timer-text"></span>
+            </div>
+            <div id="choice-buttons" class="choice-buttons"></div>
+        </div>
+
+        <!-- Toast -->
+        <div id="toast" class="toast hidden"><span id="toast-text"></span></div>
+
+        <!-- FX Overlay -->
+        <div id="fx-overlay" class="fx-overlay"></div>
+    </div>
+
+    <!-- ═══════ EPISODE TRANSITION ═══════ -->
+    <div id="episode-screen" class="screen">
+        <video id="episode-video" class="episode-video-bg" autoplay muted playsinline>
+            <source src="../../Assets/TransitionEffects/GoldenSparkleTunnelForward.mp4" type="video/mp4">
+        </video>
+        <div class="episode-overlay"></div>
+        <div class="episode-content">
+            <div class="episode-label">To be continued...</div>
+            <h2 class="episode-title" id="episode-title"></h2>
+            <p class="episode-subtitle" id="episode-subtitle"></p>
+            <button class="btn-play" onclick="continueEpisode()" id="btn-continue-episode">
+                <span class="play-icon">▶</span> Continue
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══════ ENDING SCREEN ═══════ -->
+    <div id="ending-screen" class="screen">
+        <div class="ending-bg" id="ending-bg"></div>
+        <div class="ending-overlay"></div>
+        <div class="ending-content">
+            <div class="ending-badge" id="ending-badge"></div>
+            <h2 class="ending-title" id="ending-title">Story Complete</h2>
+            <p class="ending-desc" id="ending-desc"></p>
+            <div class="ending-stats" id="ending-stats"></div>
+            <div class="ending-unlock-note" id="ending-unlock-note"></div>
+            <div class="ending-actions">
+                <button class="btn-play" onclick="replayCurrentStory()" id="btn-replay">
+                    <span class="play-icon">↻</span> Replay Story
+                </button>
+                <button class="btn-outline" onclick="toggleFateAtlas()" id="btn-fate-atlas-ending">View Fate Atlas</button>
+                <button class="btn-outline" onclick="goHome()" id="btn-home-ending">← Pick Another Story</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ SETTINGS MODAL ═══════ -->
+    <div id="settings-modal" class="modal-overlay hidden" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h3 class="modal-title">⚙ Settings</h3>
+            <div class="setting-row">
+                <label for="music-volume">Music Volume</label>
+                <input type="range" id="music-volume" min="0" max="100" value="35" oninput="setMusicVolume(this.value)">
+            </div>
+            <div class="setting-row">
+                <label for="text-speed">Text Speed</label>
+                <select id="text-speed" onchange="setTextSpeed(this.value)">
+                    <option value="12">Fast</option>
+                    <option value="22" selected>Normal</option>
+                    <option value="38">Cinematic</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Auto-Advance</label>
+                <button id="auto-advance-btn" class="toggle-btn" onclick="toggleAutoAdvance()">OFF</button>
+            </div>
+            <div class="setting-row">
+                <label>Voiceover</label>
+                <button id="voice-toggle-btn" class="toggle-btn" onclick="toggleVoiceover()">OFF</button>
+            </div>
+
+            <div class="setting-row" id="voice-volume-row">
+                <label for="voice-volume">Voice Volume</label>
+                <input type="range" id="voice-volume" min="0" max="100" value="85" oninput="setVoiceVolume(this.value)">
+            </div>
+            <button class="btn-outline modal-close-btn" onclick="toggleSettings()">Close</button>
+        </div>
+    </div>
+
+    <div id="archive-modal" class="modal-overlay hidden" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content archive-modal" onclick="event.stopPropagation()">
+            <div class="archive-head">
+                <div>
+                    <div class="archive-kicker">Saved Moments</div>
+                    <h3 class="archive-title">Memory Archive</h3>
+                    <p class="archive-sub">Preserve a decisive moment and return to it without retracing the whole path.</p>
+                </div>
+                <button class="archive-close" onclick="toggleArchivePanel()" aria-label="Close archive">✕</button>
+            </div>
+            <div class="save-slot-list archive-slot-list" id="save-slot-list-archive"></div>
+            <button class="btn-outline modal-close-btn" onclick="toggleArchivePanel()">Close Archive</button>
+        </div>
+    </div>
+
+    <div id="fate-atlas-modal" class="modal-overlay hidden" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content archive-modal fate-atlas-modal" onclick="event.stopPropagation()">
+            <div class="archive-head atlas-head">
+                <div>
+                    <div class="archive-kicker">Resonance Record</div>
+                    <h3 class="archive-title">Fate Atlas</h3>
+                    <p class="archive-sub">A living map of the endings you have uncovered, the instincts shaping them, and the threads worth pursuing next.</p>
+                </div>
+                <button class="archive-close" onclick="toggleFateAtlas()" aria-label="Close Fate Atlas">✕</button>
+            </div>
+            <div class="atlas-overview">
+                <section class="atlas-panel atlas-profile">
+                    <div class="atlas-panel-kicker">Resonance</div>
+                    <h4 class="atlas-profile-title" id="atlas-profile-title">The Unwritten Self</h4>
+                    <p class="atlas-profile-desc" id="atlas-profile-desc">Your choices have not formed a pattern yet. Reach an ending to reveal your narrative signature.</p>
+                    <div class="atlas-traits" id="atlas-traits"></div>
+                </section>
+                <section class="atlas-panel atlas-recommendations-panel">
+                    <div class="atlas-panel-kicker">Next Pull</div>
+                    <div class="atlas-recommendations" id="atlas-recommendations"></div>
+                </section>
+            </div>
+            <section class="atlas-panel">
+                <div class="atlas-panel-head">
+                    <div>
+                        <div class="atlas-panel-kicker">Story Threads</div>
+                        <h4 class="atlas-panel-title">Mapped Destinies</h4>
+                    </div>
+                    <div class="atlas-panel-meta" id="atlas-summary-meta">0 of 0 endings found</div>
+                </div>
+                <div class="atlas-story-grid" id="atlas-story-grid"></div>
+            </section>
+            <button class="btn-outline modal-close-btn" onclick="toggleFateAtlas()">Close Fate Atlas</button>
+        </div>
+    </div>
+
+    <!-- ═══════ EXIT CONFIRMATION ═══════ -->
+    <div id="exit-modal" class="modal-overlay hidden" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content modal-small" onclick="event.stopPropagation()">
+            <h3 class="modal-title">Leave Story?</h3>
+            <p class="modal-desc">Your progress in this session will be lost.</p>
+            <div class="modal-actions">
+                <button class="btn-play btn-danger" onclick="forceExit()">Leave</button>
+                <button class="btn-outline" onclick="cancelExit()">Stay</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ PLAYER IDENTITY CARD ═══════ -->
+    <div id="identity-modal" class="modal-overlay hidden" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content identity-modal" onclick="event.stopPropagation()">
+            <!-- Close Button -->
+            <button class="identity-close-btn" onclick="toggleIdentityCard()" aria-label="Close Identity Card">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M14 4L4 14M4 4l10 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+            <div class="identity-card" id="identity-card">
+                <div class="identity-card-glow"></div>
+                <div class="identity-card-inner">
+                    <!-- Top: Sigil + Archetype (horizontal) -->
+                    <div class="identity-hero-row">
+                        <div class="identity-sigil-ring">
+                            <div class="identity-sigil" id="identity-sigil">🌑</div>
+                        </div>
+                        <div class="identity-title-group">
+                            <div class="identity-kicker">Narrative Fingerprint</div>
+                            <div class="identity-archetype" id="identity-archetype">The Unwritten Self</div>
+                            <div class="identity-subtitle" id="identity-subtitle">Your story has not yet begun</div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Row -->
+                    <div class="identity-stats-row" id="identity-stats-row">
+                        <div class="identity-stat">
+                            <span class="identity-stat-value" id="id-stat-stories">0</span>
+                            <span class="identity-stat-label">Stories</span>
+                            <span class="identity-stat-sub">Touched</span>
+                        </div>
+                        <div class="identity-stat-divider"></div>
+                        <div class="identity-stat">
+                            <span class="identity-stat-value" id="id-stat-endings">0</span>
+                            <span class="identity-stat-label">Endings</span>
+                            <span class="identity-stat-sub">Discovered</span>
+                        </div>
+                        <div class="identity-stat-divider"></div>
+                        <div class="identity-stat">
+                            <span class="identity-stat-value" id="id-stat-choices">0</span>
+                            <span class="identity-stat-label">Choices</span>
+                            <span class="identity-stat-sub">Made</span>
+                        </div>
+                    </div>
+
+                    <!-- Resonance Visualization -->
+                    <div class="identity-section">
+                        <div class="identity-section-head">Resonance Profile</div>
+                        <div class="identity-resonance" id="identity-resonance"></div>
+                    </div>
+
+                    <!-- Achievement Badges -->
+                    <div class="identity-section">
+                        <div class="identity-section-head">Achievements</div>
+                        <div class="identity-badge-strip" id="identity-badge-strip"></div>
+                    </div>
+
+                    <!-- Decision Heatmap -->
+                    <div class="identity-section">
+                        <div class="identity-section-head">Decision Heatmap</div>
+                        <div class="identity-heatmap" id="identity-heatmap"></div>
+                    </div>
+
+                    <!-- Platform Showcase -->
+                    <div class="identity-tech-strip">
+                        <div class="identity-tech-item"><span class="identity-tech-icon">⚙️</span><span>Zero Dependencies</span></div>
+                        <div class="identity-tech-item"><span class="identity-tech-icon">🎨</span><span>6 Genre Themes</span></div>
+                        <div class="identity-tech-item"><span class="identity-tech-icon">🔊</span><span>Procedural Audio</span></div>
+                        <div class="identity-tech-item"><span class="identity-tech-icon">💎</span><span>3K+ Lines Engine</span></div>
+                    </div>
+
+                    <div class="identity-watermark">Whispering Shadows • Narrative Identity Engine • v6</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ CHARACTER CUSTOMIZATION MODAL ═══════ -->
+    <div id="char-custom-modal" class="char-custom-overlay hidden">
+        <div class="char-custom-container">
+            <button id="char-btn-back" class="char-btn-back" title="Go Back">
+                <span class="char-btn-back-icon">⟵</span> Back
+            </button>
+            <!-- Animated particles background -->
+            <div class="char-custom-particles"></div>
+            
+            <!-- Step 1: Name -->
+            <div id="char-step-name" class="char-step active">
+                <div class="char-step-header">
+                    <div class="char-step-kicker" id="char-story-kicker">ENTER YOUR STORY</div>
+                    <h2 class="char-step-title">Who Are You?</h2>
+                    <p class="char-step-sub" id="char-name-desc">Every legend begins with a name. Choose the one this world will remember.</p>
+                </div>
+                <div class="char-name-input-wrap">
+                    <input type="text" id="char-name-input" class="char-name-input" placeholder="Enter your name..." maxlength="20" autocomplete="off" spellcheck="false">
+                    <div class="char-name-underline"></div>
+                </div>
+                <button class="char-btn-next" id="char-btn-to-gender" disabled>
+                    <span>Continue</span>
+                    <span class="char-btn-arrow">→</span>
+                </button>
+            </div>
+
+            <!-- Step 2: Gender -->
+            <div id="char-step-gender" class="char-step">
+                <div class="char-step-header">
+                    <div class="char-step-kicker">SHAPE YOUR IDENTITY</div>
+                    <h2 class="char-step-title">Choose Your Path</h2>
+                    <p class="char-step-sub">The body is the vessel. The soul is the story.</p>
+                </div>
+                <div class="char-gender-grid">
+                    <button class="char-gender-card" data-gender="male" id="char-gender-male">
+                        <div class="char-gender-icon">♂</div>
+                        <div class="char-gender-label">Male</div>
+                        <div class="char-gender-glow"></div>
+                    </button>
+                    <button class="char-gender-card" data-gender="female" id="char-gender-female">
+                        <div class="char-gender-icon">♀</div>
+                        <div class="char-gender-label">Female</div>
+                        <div class="char-gender-glow"></div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Look -->
+            <div id="char-step-look" class="char-step">
+                <div class="char-step-header">
+                    <div class="char-step-kicker">DEFINE YOUR PRESENCE</div>
+                    <h2 class="char-step-title">Choose Your Look</h2>
+                    <p class="char-step-sub" id="char-look-desc">How will this world see you?</p>
+                </div>
+                <div class="char-look-grid" id="char-look-grid">
+                    <!-- Populated dynamically -->
+                </div>
+                <button class="char-btn-next char-btn-begin" id="char-btn-begin" disabled>
+                    <span class="char-btn-glow"></span>
+                    <span>Begin Your Story</span>
+                    <span class="char-btn-arrow">▶</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ CINEMATIC LOADING QUOTE ═══════ -->
+    <div id="loading-quote" class="loading-quote hidden">
+        <div class="loading-quote-text" id="loading-quote-text"></div>
+        <div class="loading-quote-author" id="loading-quote-author"></div>
+        <div class="loading-quote-skip">tap anywhere to skip</div>
+    </div>
+
+    <!-- ═══════ ENDING CELEBRATION OVERLAY ═══════ -->
+    <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+
+    <script src="../../Core/Data/story_ravencroft.js"></script>
+    <script src="../../Core/Data/story_neon.js"></script>
+    <script src="../../Core/Data/story_crimson.js"></script>
+    <script src="../../Core/Data/story_echoes.js"></script>
+    <script src="../../Core/Data/story_clockwork.js"></script>
+    <script src="../../Core/Data/story_realm.js"></script>
+    <script src="../../Core/Data/story_fractured.js"></script>
+    <script src="../../Core/Data/stories.js"></script>
+    <script src="../../Core/Engine/char_customization.js"></script>
+    <script src="../../Core/Engine/voice_engine.js"></script>
+    <script src="../../Core/Engine/engine.js"></script>
+</body>
+</html>
