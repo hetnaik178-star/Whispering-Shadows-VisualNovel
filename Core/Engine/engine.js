@@ -1755,34 +1755,40 @@ function renderNode(node) {
   const sceneBg = $('scene-bg');
   const sceneVid = $('scene-video');
 
+  // ── Set Background Image First (Guarantees image is always loaded and visible) ──
+  const bgImg = node.bg || (node.scene && G.story.scenes && G.story.scenes[node.scene]?.bg);
+  if (bgImg) {
+    if (bgImg.startsWith('linear') || bgImg.startsWith('radial')) {
+      sceneBg.style.backgroundImage = 'none';
+      sceneBg.style.background = bgImg;
+    } else {
+      sceneBg.style.background = 'none';
+      sceneBg.style.backgroundImage = `url('${ASSET}images/${bgImg}')`;
+    }
+  }
+  sceneBg.style.opacity = '1';
+
+  // ── Optional Video Overlay (Smooth fade-in if video is available and playable) ──
   if (node.video) {
-    sceneBg.style.opacity = '0';
-    sceneVid.src = ASSET + 'videos/' + node.video;
-    sceneVid.classList.add('active');
-    sceneVid.play().catch(() => {});
-  } else if (node.bg) {
+    const targetVideoSrc = ASSET + 'videos/' + node.video;
+    sceneVid.oncanplay = () => {
+      sceneVid.classList.add('active');
+      sceneBg.style.opacity = '0';
+      sceneVid.play().catch(() => {
+        sceneVid.classList.remove('active');
+        sceneBg.style.opacity = '1';
+      });
+    };
+    sceneVid.onerror = () => {
+      sceneVid.classList.remove('active');
+      sceneBg.style.opacity = '1';
+    };
+    sceneVid.src = targetVideoSrc;
+  } else {
     sceneVid.classList.remove('active');
     sceneVid.pause();
+    sceneVid.src = '';
     sceneBg.style.opacity = '1';
-    if (node.bg.startsWith('linear') || node.bg.startsWith('radial')) {
-      sceneBg.style.backgroundImage = 'none';
-      sceneBg.style.background = node.bg;
-    } else {
-      sceneBg.style.background = 'none';
-      sceneBg.style.backgroundImage = `url('${ASSET}images/${node.bg}')`;
-    }
-  } else if (node.scene && G.story.scenes && G.story.scenes[node.scene]) {
-    const sc = G.story.scenes[node.scene];
-    sceneVid.classList.remove('active');
-    sceneVid.pause();
-    sceneBg.style.opacity = '1';
-    if (sc.bg.startsWith('linear') || sc.bg.startsWith('radial')) {
-      sceneBg.style.backgroundImage = 'none';
-      sceneBg.style.background = sc.bg;
-    } else {
-      sceneBg.style.background = 'none';
-      sceneBg.style.backgroundImage = `url('${sc.bg}')`;
-    }
   }
 
   // ── Music ──
@@ -2478,9 +2484,28 @@ function loadSettings() {
   } catch(e) {}
 }
 
-// ═══════ MUSIC SYSTEM (CROSSFADE) ═══════
+// ═══════ MUSIC SYSTEM (CROSSFADE & AUTOPLAY RESILIENCE) ═══════
+let pendingMusic = null;
+function unlockAudioPlayback() {
+  if (pendingMusic) {
+    const src = pendingMusic;
+    pendingMusic = null;
+    playMusic(src);
+  }
+}
+window.addEventListener('pointerdown', unlockAudioPlayback, { passive: true });
+window.addEventListener('keydown', unlockAudioPlayback, { passive: true });
+
 function playMusic(src) {
-  if (G.currentMusic === src) return;
+  if (!src) return;
+  if (G.currentMusic === src) {
+    // If same music is already set, ensure active player is actually playing
+    const active = $('music-' + G.activeMusicPlayer);
+    if (active && active.paused && active.src) {
+      active.play().catch(e => { pendingMusic = src; });
+    }
+    return;
+  }
   G.currentMusic = src;
 
   const current = $('music-' + G.activeMusicPlayer);
@@ -2489,7 +2514,13 @@ function playMusic(src) {
 
   next.src = src;
   next.volume = 0;
-  next.play().catch(() => {});
+  const playPromise = next.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(err => {
+      console.warn('Audio play deferred pending user interaction:', err);
+      pendingMusic = src;
+    });
+  }
 
   const steps = 20;
   const duration = 1500;
@@ -2498,12 +2529,14 @@ function playMusic(src) {
     step++;
     const progress = step / steps;
     const volume = getVolume();
-    if (current.src) current.volume = Math.max(0, volume * (1 - progress));
-    next.volume = volume * progress;
+    if (current && current.src) current.volume = Math.max(0, volume * (1 - progress));
+    if (next) next.volume = volume * progress;
     if (step >= steps) {
       clearInterval(fade);
-      current.pause();
-      current.src = '';
+      if (current) {
+        current.pause();
+        current.src = '';
+      }
       G.activeMusicPlayer = G.activeMusicPlayer === 'a' ? 'b' : 'a';
       applyMusicVolume();
     }
@@ -2518,12 +2551,12 @@ function stopMusic() {
     step++;
     const progress = step / steps;
     const volume = getEffectiveMusicVolume();
-    if (a.src) a.volume = Math.max(0, volume * (1 - progress));
-    if (b.src) b.volume = Math.max(0, volume * (1 - progress));
+    if (a && a.src) a.volume = Math.max(0, volume * (1 - progress));
+    if (b && b.src) b.volume = Math.max(0, volume * (1 - progress));
     if (step >= steps) {
       clearInterval(fade);
-      a.pause(); a.src = '';
-      b.pause(); b.src = '';
+      if (a) { a.pause(); a.src = ''; }
+      if (b) { b.pause(); b.src = ''; }
       G.currentMusic = null;
     }
   }, 60);
@@ -2536,12 +2569,13 @@ function playTransition(videoSrc, cb) {
   const runToken = G.runToken;
 
   overlay.classList.remove('hidden');
-  video.src = videoSrc;
-  video.currentTime = 0;
-  video.play().catch(() => {});
 
+  let finished = false;
   const finish = () => {
+    if (finished) return;
+    finished = true;
     video.removeEventListener('ended', finish);
+    video.removeEventListener('error', finish);
     clearTimeout(maxTimer);
     overlay.classList.add('hidden');
     video.pause();
@@ -2550,7 +2584,14 @@ function playTransition(videoSrc, cb) {
   };
 
   video.addEventListener('ended', finish);
-  const maxTimer = setTimeout(finish, 3500);
+  video.addEventListener('error', finish);
+  const maxTimer = setTimeout(finish, 2000);
+
+  video.src = videoSrc;
+  video.currentTime = 0;
+  video.play().catch(() => {
+    finish();
+  });
 }
 
 // ═══════ EFFECTS ═══════
